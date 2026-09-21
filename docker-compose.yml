@@ -26,10 +26,13 @@ services:
       MAX_TOKEN: ${MAX_TOKEN:-}
       MAX_UID: ${MAX_UID:-}
       SOCKS5_LISTEN: ${SOCKS5_LISTEN:-:1080}
+      CODEC: ${CODEC:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       DEBUG: ${DEBUG:-0}
     # No auth on the SOCKS5 server — keep it bound to the host loopback only.
+    # Override the host side with SOCKS5_PORT if 1080 is taken on the host.
     ports:
-      - "127.0.0.1:1080:1080"
+      - "127.0.0.1:${SOCKS5_PORT:-1080}:1080"
 
   exit-node:
     build: .
@@ -42,7 +45,10 @@ services:
       URL: ${DOC_URL:-}
       MAX_TOKEN: ${MAX_TOKEN:-}
       MAX_UID: ${MAX_UID:-}
+      MODE: ${MODE:-l4}
       LOCAL_IP: ${EXIT_LOCAL_IP:-}
+      CODEC: ${CODEC:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       DEBUG: ${DEBUG:-0}
     cap_add:
       - NET_RAW

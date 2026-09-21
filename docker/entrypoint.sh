@@ -20,19 +20,42 @@ case "$role" in
     exit 2
     ;;
 esac
+# Canonical flag value for the exit role is 'exit' ('exit-node' names the
+# deprecated flag alias, not the value).
+[ "$role" = exit-node ] && role=exit
 
 case "$transport" in
-  yandex|vyandex|oneme) ;;
+  yandex|vyandex|oneme|cupsonline|mailru) ;;
   *)
-    echo "TRANSPORT must be one of yandex, vyandex, oneme (got '$transport')" >&2
+    echo "TRANSPORT must be one of yandex, vyandex, oneme, cupsonline, mailru (got '$transport')" >&2
     exit 2
     ;;
 esac
 
-set -- "--$role" --transport "$transport"
+mode="${MODE:-}"
+case "$mode" in
+  ""|l3|l4) ;;
+  *)
+    echo "MODE must be l3 or l4 (got '$mode')" >&2
+    exit 2
+    ;;
+esac
+
+codec="${CODEC:-}"
+case "$codec" in
+  ""|batched|legacy) ;;
+  *)
+    echo "CODEC must be batched or legacy (got '$codec')" >&2
+    exit 2
+    ;;
+esac
+
+set -- "--role" "$role" --transport "$transport"
 
 if [ "$role" = client ]; then
-  set -- "$@" --socks5 "$listen"
+  set -- "$@" --inbound socks5 --socks5 "$listen"
+elif [ -n "$mode" ]; then
+  set -- "$@" --mode "$mode"
 fi
 
 if [ -n "${URL:-}" ]; then
@@ -50,11 +73,21 @@ if [ -n "${LOCAL_IP:-}" ]; then
   # unnecessary.
   set -- "$@" --local-ip "$LOCAL_IP"
 fi
+if [ -n "$codec" ]; then
+  set -- "$@" --codec "$codec"
+fi
+if [ -n "${ENCRYPTION_KEY:-}" ]; then
+  # The binary reads the AES-256-GCM secret from a file; materialize the env
+  # value into one (trimmed, no trailing newline) so no volume mount is needed.
+  keyfile="/tmp/openflux.key"
+  printf '%s' "$ENCRYPTION_KEY" > "$keyfile"
+  set -- "$@" --encryption-key-file "$keyfile"
+fi
 case "${DEBUG:-0}" in
   1|true|yes) set -- "$@" --debug ;;
 esac
 
-if [ "$role" = exit-node ]; then
+if [ "$role" = exit ]; then
   echo "[entrypoint] dropping outbound TCP RSTs inside the container netns"
   if ! iptables -A OUTPUT -p tcp --tcp-flags RST RST -j DROP; then
     echo "[entrypoint] WARNING: iptables failed (missing NET_ADMIN?); kernel RSTs will kill tunnel connections" >&2

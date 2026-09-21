@@ -211,6 +211,37 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -ldflags="-s -w" -trimpath -o openflux-linux .
 ```
 
+## Docker (docker compose)
+
+Один образ, две независимые роли — `client` и `exit-node`, выбирается нужная
+через profile. Конфигурация — через `.env` (шаблон: `.env.example`).
+Подробное описание всех настроек — в [DOCKER.ru.md](DOCKER.ru.md).
+
+```
+cp .env.example .env    # заполнить DOC_URL / MAX_TOKEN / MAX_UID
+```
+
+Клиент (SOCKS5 на 127.0.0.1:1080 хоста, без привилегий):
+
+```
+docker compose --profile client up -d --build
+```
+
+Выходная нода (на Linux VPS; по умолчанию `MODE=l4`, для l3 — `MODE=l3`,
+compose уже выдаёт `NET_RAW` + `NET_ADMIN` в пределах netns контейнера):
+
+```
+docker compose --profile exit-node up -d --build
+```
+
+Переменные: `TRANSPORT` (yandex | vyandex | oneme | cupsonline | mailru),
+`DOC_URL`, `MAX_TOKEN`/`MAX_UID`, `MODE` (l3 | l4), `CODEC`
+(batched | legacy, должны совпадать на обоих концах), `ENCRYPTION_KEY`
+(опциональный общий секрет AES-256-GCM), `EXIT_LOCAL_IP`, `DEBUG`.
+
+Для `cupsonline` выходная нода печатает base64-список комнат в
+`docker compose logs exit-node` — укажите его клиенту в `DOC_URL`.
+
 ## Использование
 
 ### Выходная нода - L3 (Linux, root)
