@@ -11,7 +11,9 @@ set -eu
 
 role="${ROLE:-client}"
 transport="${TRANSPORT:-yandex}"
-listen="${SOCKS5_LISTEN:-:1080}"
+# Listen port inside the container follows SOCKS5_PORT so it can never
+# disagree with the host→container port mapping in docker-compose.yml.
+listen="${SOCKS5_LISTEN:-:${SOCKS5_PORT:-1080}}"
 
 case "$role" in
   client|exit-node) ;;
